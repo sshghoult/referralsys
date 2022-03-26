@@ -3,3 +3,4 @@
 /.git
 db.sqlite3
 */__pycache__/
+config/secrets.py
