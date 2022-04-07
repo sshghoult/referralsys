@@ -1,10 +1,11 @@
 from django.db import models
+from django.shortcuts import get_object_or_404
 
 
 # Create your models here.
 class ProfileManager(models.Manager):
     def get_user(self, invite_code):
-        return self.get_queryset().filter(invite_code=invite_code)
+        return get_object_or_404(self.get_queryset(), invite_code=invite_code)
 
     def get_referrals(self, invite_code):
         return self.get_queryset().filter(invited_by=invite_code)
