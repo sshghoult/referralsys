@@ -6,21 +6,13 @@ from referral_sys.models import Profile
 from .serializers import UserSerializer
 
 
-# Create your views here.
-class UserAPIView(mixins.CreateModelMixin, mixins.RetrieveModelMixin, generics.GenericAPIView):
-    queryset = Profile.objects.all()
-    serializer_class = UserSerializer
-    lookup_field = 'invite_code'
-
-    def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
-
-    # TODO: make model request by hand and move away from Generic
-
-
-
 class ProfileAPIView(views.APIView):
 
     def get(self, request, *args, **kwargs):
-        user = Profile.objects.filter(invite_code=kwargs['invite_code'])
-        return Response(user)
+        user = Profile.objects.get_user(kwargs['invite_code'])
+        referrals = Profile.objects.get_referrals(kwargs['invite_code'])
+
+        referrals_serialized = [UserSerializer(k).data for k in referrals]
+        response = {'user': UserSerializer(user[0]).data, 'referrals': referrals_serialized}
+
+        return Response(response)

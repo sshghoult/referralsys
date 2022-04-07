@@ -5,4 +5,4 @@ from referral_sys.models import Profile
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ('invite_code', 'phone_number', 'invited_by')
+        fields = ['invite_code', 'phone_number', 'invited_by']
