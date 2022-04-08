@@ -1,7 +1,8 @@
 from django.db import models
 from django.shortcuts import get_object_or_404
 import referral_sys.utils as utils
-
+import redis
+import config.settings as settings
 
 
 # Create your models here.
@@ -33,11 +34,9 @@ class SMSCodesManager(models.Manager):
         print(self.create(phone_number=phone_number, expected_code=code))
         return code
 
-
     def check_code(self, phone_number, input_code):
         row = get_object_or_404(self.get_queryset(), phone_number=phone_number)
         return row.expected_code == input_code
-
 
 
 class SMSCodes(models.Model):
@@ -47,3 +46,41 @@ class SMSCodes(models.Model):
 
     def __str__(self):
         return f"{self.phone_number} - {self.expected_code}"
+
+
+class SMSCodesManagerRedis(object):
+    redis_db = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0,
+                                 charset="utf-8", decode_responses=True)
+    code_timeout = 120
+
+    def request_code(self, phone_number):
+        code = utils.ThirdPartySMSCodeProviderMockup.get_code()
+        instance_repr = SMSCodesRedis(phone_number, code).redis_repr()
+        self.redis_db.set(instance_repr['name'], instance_repr['value'], ex=self.code_timeout)
+        return code
+
+    def check_code(self, phone_number, input_code):
+        stored_code = self.redis_db.get(phone_number)
+        # print(f"{stored_code=}, {input_code=}")
+        return stored_code == input_code
+
+
+class SMSCodesRedis(object):
+    objects = SMSCodesManagerRedis()
+
+    def __init__(self, phone_number, expected_code):
+        self.phone_number = phone_number
+        self.expected_code = expected_code
+
+    def __str__(self):
+        return f"{self.phone_number} - {self.expected_code}"
+
+    def json_repr(self):
+        return {'phone_number': self.phone_number, 'code': self.expected_code}
+
+    def redis_repr(self):
+        return {"name": self.phone_number, "value": self.expected_code}
+
+
+
+

@@ -2,7 +2,7 @@ from rest_framework import views, generics
 from rest_framework import mixins
 from rest_framework.response import Response
 
-from referral_sys.models import Profile, SMSCodes
+from referral_sys.models import Profile, SMSCodes, SMSCodesRedis
 from .serializers import UserSerializer
 
 
@@ -21,7 +21,7 @@ class ProfileAPIView(views.APIView):
 class RequestAuthSMSCodeAPIView(views.APIView):
 
     def post(self, request, *args, **kwargs):
-        code = SMSCodes.objects.request_code(phone_number=request.data['phone_number'])
+        code = SMSCodesRedis.objects.request_code(phone_number=request.data['phone_number'])
         resp_data = {"code": code}
         return Response(status=200, data=resp_data)
 
@@ -29,13 +29,13 @@ class RequestAuthSMSCodeAPIView(views.APIView):
 class ConfirmAuthSMSCodeAPIView(views.APIView):
 
     def post(self, request, *args, **kwargs):
-        check = SMSCodes.objects.check_code(phone_number=request.data['phone_number'],
-                                            input_code=request.data['code'])
-        if check:
+        check = SMSCodesRedis.objects.check_code(phone_number=request.data['phone_number'],
+                                                 input_code=request.data['code'])
+        if not check:
             resp = Response(status=404)
         else:
             resp = Response(status=200)
 
         return resp
 
-# {"phone_number": "+74561289"}
+# {"phone_number": "+74561289", "code": "9303"}
