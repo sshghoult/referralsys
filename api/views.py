@@ -2,8 +2,12 @@ from rest_framework import views, generics
 from rest_framework import mixins
 from rest_framework.response import Response
 
-from referral_sys.models import Profile, SMSCodes, SMSCodesRedis, IntegratedProfile
-from .serializers import UserSerializer
+from referral_sys.models import SMSCodesRedis, IntegratedProfile
+from .serializers import ProfileSerializer
+
+from referral_sys.authentication import SMSCodeBackend
+
+from django.contrib.auth import login
 
 
 class ProfileAPIView(views.APIView):
@@ -13,8 +17,8 @@ class ProfileAPIView(views.APIView):
         user = IntegratedProfile.objects.get_user_by_code_public(kwargs['invite_code'])
         referrals = IntegratedProfile.objects.get_referrals(kwargs['invite_code'])
 
-        referrals_serialized = [UserSerializer(k).data for k in referrals]
-        response = {'user': UserSerializer(user).data, 'referrals': referrals_serialized}
+        referrals_serialized = [ProfileSerializer(k).data for k in referrals]
+        response = {'user': ProfileSerializer(user).data, 'referrals': referrals_serialized}
 
         return Response(response)
 
@@ -30,13 +34,13 @@ class RequestAuthSMSCodeAPIView(views.APIView):
 class ConfirmAuthSMSCodeAPIView(views.APIView):
 
     def post(self, request, *args, **kwargs):
-        check = SMSCodesRedis.objects.check_code(phone_number=request.data['phone_number'],
-                                                 input_code=request.data['code'])
-        if not check:
-            resp = Response(status=404)
+        user = SMSCodeBackend().authenticate(request, phone_number=request.data['phone_number'],
+                                      input_code=request.data['code'])
+        if user is not None:
+            login(request, user)
+            return Response(status=200)
         else:
-            resp = Response(status=200)
+            resp = Response(status=404)
 
-        return resp
 
 # {"phone_number": "1", "code": "9303"}

@@ -7,8 +7,10 @@ from django.contrib.auth.models import UserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 
+from django.core.exceptions import ObjectDoesNotExist
 
 # Create your models here.
+"""
 class ProfileManager(models.Manager):
     def get_user(self, invite_code):
         return get_object_or_404(self.get_queryset(), invite_code=invite_code)
@@ -29,6 +31,8 @@ class Profile(models.Model):
     class Meta:
         ordering = ['phone_number']
 
+"""
+
 
 class IntegratedProfileManager(BaseUserManager):
     use_in_migrations = True
@@ -36,9 +40,9 @@ class IntegratedProfileManager(BaseUserManager):
     def _create_user(self, phone_number, **extra_fields):
         if not phone_number:
             raise ValueError('Phone number must be set')
-        # TODO: should fetch invite_code here
-        invite_code = None
+        invite_code = utils.InviteCodeProviderMockup.get_invite_code()
         user = self.model(phone_number=phone_number, invite_code=invite_code, **extra_fields)
+        user.save()
         return user
 
     def create_user(self, phone_number, **extra_fields):
@@ -60,29 +64,31 @@ class IntegratedProfileManager(BaseUserManager):
     def get_user_by_phone_internal(self, phone_number):
         try:
             user = self.get_queryset().get(phone_number=phone_number)
-        except models.Model.DoesNotExist:
+        except ObjectDoesNotExist:
             user = None
 
         return user
-
 
     def get_referrals(self, invite_code):
         return self.get_queryset().filter(invited_by=invite_code)
 
 
-
-
 class IntegratedProfile(AbstractBaseUser, PermissionsMixin):
     invite_code = models.CharField(max_length=6, unique=True)
+    password = models.CharField(max_length=42, null=True, blank=True)
     phone_number = models.CharField(max_length=12, primary_key=True)
     invited_by = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
 
     objects = IntegratedProfileManager()
 
     USERNAME_FIELD = 'phone_number'
     REQUIRED_FIELDS = []
+
+    class Meta:
+        ordering = ['phone_number']
 
     def get_full_name(self):
         return f"{self.phone_number} - {self.invite_code}"
@@ -91,6 +97,7 @@ class IntegratedProfile(AbstractBaseUser, PermissionsMixin):
         return self.phone_number
 
 
+"""
 class SMSCodesManager(models.Manager):
 
     def request_code(self, phone_number):
@@ -110,6 +117,7 @@ class SMSCodes(models.Model):
 
     def __str__(self):
         return f"{self.phone_number} - {self.expected_code}"
+"""
 
 
 class SMSCodesManagerRedis(object):
@@ -144,7 +152,3 @@ class SMSCodesRedis(object):
 
     def redis_repr(self):
         return {"name": self.phone_number, "value": self.expected_code}
-
-
-
-

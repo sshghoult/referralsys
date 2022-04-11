@@ -16,7 +16,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+# admin.autodiscover()
+# admin.site.login_form = AuthenticationForm
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('api.urls'))
 ]
+
+
