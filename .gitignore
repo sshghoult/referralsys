@@ -1,6 +1,6 @@
 /venv
 /.idea
 /.git
-db.sqlite3
+dump/db.sqlite3
 */__pycache__/
 config/secrets.py

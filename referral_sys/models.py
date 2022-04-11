@@ -3,6 +3,9 @@ from django.shortcuts import get_object_or_404
 import referral_sys.utils as utils
 import redis
 import config.settings as settings
+from django.contrib.auth.models import UserManager
+from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 
 
 # Create your models here.
@@ -25,6 +28,67 @@ class Profile(models.Model):
 
     class Meta:
         ordering = ['phone_number']
+
+
+class IntegratedProfileManager(BaseUserManager):
+    use_in_migrations = True
+
+    def _create_user(self, phone_number, **extra_fields):
+        if not phone_number:
+            raise ValueError('Phone number must be set')
+        # TODO: should fetch invite_code here
+        invite_code = None
+        user = self.model(phone_number=phone_number, invite_code=invite_code, **extra_fields)
+        return user
+
+    def create_user(self, phone_number, **extra_fields):
+        extra_fields.setdefault('is_superuser', False)
+        return self._create_user(phone_number, **extra_fields)
+
+    def create_superuser(self, phone_number, **extra_fields):
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields['is_staff'] = True
+
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self._create_user(phone_number, **extra_fields)
+
+    def get_user_by_code_public(self, invite_code):
+        return get_object_or_404(self.get_queryset(), invite_code=invite_code)
+
+    def get_user_by_phone_internal(self, phone_number):
+        try:
+            user = self.get_queryset().get(phone_number=phone_number)
+        except models.Model.DoesNotExist:
+            user = None
+
+        return user
+
+
+    def get_referrals(self, invite_code):
+        return self.get_queryset().filter(invited_by=invite_code)
+
+
+
+
+class IntegratedProfile(AbstractBaseUser, PermissionsMixin):
+    invite_code = models.CharField(max_length=6, unique=True)
+    phone_number = models.CharField(max_length=12, primary_key=True)
+    invited_by = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    objects = IntegratedProfileManager()
+
+    USERNAME_FIELD = 'phone_number'
+    REQUIRED_FIELDS = []
+
+    def get_full_name(self):
+        return f"{self.phone_number} - {self.invite_code}"
+
+    def get_short_name(self):
+        return self.phone_number
 
 
 class SMSCodesManager(models.Manager):
@@ -51,7 +115,7 @@ class SMSCodes(models.Model):
 class SMSCodesManagerRedis(object):
     redis_db = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0,
                                  charset="utf-8", decode_responses=True)
-    code_timeout = 120
+    code_timeout = None
 
     def request_code(self, phone_number):
         code = utils.ThirdPartySMSCodeProviderMockup.get_code()

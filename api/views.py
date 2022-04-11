@@ -2,15 +2,16 @@ from rest_framework import views, generics
 from rest_framework import mixins
 from rest_framework.response import Response
 
-from referral_sys.models import Profile, SMSCodes, SMSCodesRedis
+from referral_sys.models import Profile, SMSCodes, SMSCodesRedis, IntegratedProfile
 from .serializers import UserSerializer
 
 
 class ProfileAPIView(views.APIView):
 
     def get(self, request, *args, **kwargs):
-        user = Profile.objects.get_user(kwargs['invite_code'])
-        referrals = Profile.objects.get_referrals(kwargs['invite_code'])
+        # user = Profile.objects.get_user(kwargs['invite_code'])
+        user = IntegratedProfile.objects.get_user_by_code_public(kwargs['invite_code'])
+        referrals = IntegratedProfile.objects.get_referrals(kwargs['invite_code'])
 
         referrals_serialized = [UserSerializer(k).data for k in referrals]
         response = {'user': UserSerializer(user).data, 'referrals': referrals_serialized}
@@ -38,4 +39,4 @@ class ConfirmAuthSMSCodeAPIView(views.APIView):
 
         return resp
 
-# {"phone_number": "+74561289", "code": "9303"}
+# {"phone_number": "1", "code": "9303"}
