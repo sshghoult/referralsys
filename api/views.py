@@ -8,9 +8,15 @@ from .serializers import ProfileSerializer
 from referral_sys.authentication import SMSCodeBackend
 
 from django.contrib.auth import login
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 
-class ProfileAPIView(views.APIView):
+class CustomLoginRequiredMixin(LoginRequiredMixin):
+    # login_url = '/api/auth/code_request'
+    raise_exception = True
+
+
+class ProfileAPIView(CustomLoginRequiredMixin, views.APIView):
 
     def get(self, request, *args, **kwargs):
         # user = Profile.objects.get_user(kwargs['invite_code'])
@@ -35,12 +41,11 @@ class ConfirmAuthSMSCodeAPIView(views.APIView):
 
     def post(self, request, *args, **kwargs):
         user = SMSCodeBackend().authenticate(request, phone_number=request.data['phone_number'],
-                                      input_code=request.data['code'])
+                                             input_code=request.data['code'])
         if user is not None:
             login(request, user)
             return Response(status=200)
         else:
-            resp = Response(status=404)
-
+            return Response(status=404)
 
 # {"phone_number": "1", "code": "9303"}

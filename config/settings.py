@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'redis_cache',
 
     'referral_sys',
     'api'
@@ -68,6 +69,24 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
+CACHES = {
+    'default': {
+        'BACKEND': 'redis_cache.RedisCache',
+        'LOCATION': f'{REDIS_HOST}:{REDIS_PORT}',
+        'OPTIONS': {
+            'DB': 0,
+        },
+    },
+}
+
+
 
 ROOT_URLCONF = 'config.urls'
 
@@ -111,8 +130,6 @@ DATABASES = {
     }
 }
 
-REDIS_HOST = 'localhost'
-REDIS_PORT = 6379
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
