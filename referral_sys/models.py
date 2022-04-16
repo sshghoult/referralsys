@@ -3,14 +3,14 @@ from django.shortcuts import get_object_or_404
 import referral_sys.utils as utils
 import redis
 import config.settings as settings
-from django.contrib.auth.models import UserManager
+
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 
 from django.core.exceptions import ObjectDoesNotExist
 
-# Create your models here.
 
+# Create your models here.
 
 
 class IntegratedProfileManager(BaseUserManager):
@@ -56,7 +56,8 @@ class IntegratedProfile(AbstractBaseUser, PermissionsMixin):
     invite_code = models.CharField(max_length=6, unique=True)
     password = models.CharField(max_length=42, null=True, blank=True)
     phone_number = models.CharField(max_length=12, primary_key=True)
-    invited_by = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
+    invited_by = models.ForeignKey("self", to_field="invite_code", on_delete=models.SET_NULL,
+                                   null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
@@ -76,9 +77,8 @@ class IntegratedProfile(AbstractBaseUser, PermissionsMixin):
         return self.phone_number
 
 
-
 class SMSCodesManagerRedis(object):
-    redis_db = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0,
+    redis_db = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=1,
                                  charset="utf-8", decode_responses=True)
     code_timeout = None
 

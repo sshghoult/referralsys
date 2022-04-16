@@ -2,10 +2,13 @@ version: "2.1"
 services:
   postgres:
     image: postgres:latest
-    container_name: "posgr"
+    container_name: "mypostgre"
+    restart: always
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: 5432
       POSTGRES_DB: "test"
     ports:
       - "5432:5432"
@@ -15,3 +18,42 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+
+  redis:
+    container_name: "myredis"
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --bind "myredis" 127.0.0.1 --protected-mode yes  --port 6379 --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli","ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+
+  django:
+    build:
+      context: .
+      dockerfile: django.Dockerfile
+    container_name: "mydjango"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: "test"
+      REDIS_HOST: "redis"
+      REDIS_PORT: 6379
+      DEBUG: 'true'
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '8008:8008'
+    # command: 'sh -c "python manage.py migrate" && "python manage.py runserver 0.0.0.0:8008"'
+    # command: "sleep 1000000000000000s"

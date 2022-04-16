@@ -1,0 +1,5 @@
+Django==3.2
+djangorestframework==3.11.2
+django-redis-cache==3.0.1
+redis==3.5.3
+psycopg2==2.9.3
