@@ -38,7 +38,13 @@ class IntegratedProfileManager(BaseUserManager):
         return self._create_user(phone_number, **extra_fields)
 
     def get_user_by_code_public(self, invite_code):
-        return get_object_or_404(self.get_queryset(), invite_code=invite_code)
+        try:
+            user = self.get_queryset().get(invite_code=invite_code)
+        except ObjectDoesNotExist:
+            user = None
+
+        return user
+
 
     def get_user_by_phone_internal(self, phone_number):
         try:

@@ -22,6 +22,9 @@ class ProfileAPIView(CustomLoginRequiredMixin, UpdateModelMixin, views.APIView):
 
     def get(self, request, *args, **kwargs):
         user = IntegratedProfile.objects.get_user_by_code_public(kwargs['invite_code'])
+        if user is None:
+            return Response(status=404)
+
         referrals = IntegratedProfile.objects.get_referrals(kwargs['invite_code'])
 
         referrals_serialized = [ProfileSerializerShort(k).data for k in referrals]
@@ -34,26 +37,28 @@ class ProfileAPIView(CustomLoginRequiredMixin, UpdateModelMixin, views.APIView):
         # TODO: validate damn payloads in middleware!
 
         user = IntegratedProfile.objects.get_user_by_code_public(kwargs['invite_code'])
-        user.invited_by = IntegratedProfile.objects.get_user_by_code_public(
+        if user is None:
+            return Response(status=404)
+
+        invited_by_prof = IntegratedProfile.objects.get_user_by_code_public(
             request.data['invited_by'])
+        if invited_by_prof is None:
+            return Response(status=404)
 
-        try:
-            assert request.user.invite_code == kwargs['invite_code']
-        except AssertionError:
+        user.invited_by = invited_by_prof
+
+        if request.user.invite_code != kwargs['invite_code']:
             resp = Response(status=403, data={"message": "user can not change data of others"})
-            return resp
-
-        try:
-            assert request.data['invited_by'] != user.invite_code
-            # user.update(invited_by=request.data['invited_by'])
-            user.save(update_fields=['invited_by'])
-        except AssertionError:
+        elif request.data['invited_by'] == user.invite_code:
             resp = Response(status=409, data={"message": "user can not be their own referral"})
-        except django.db.Error as e:
-            print(e)
-            resp = Response(status=403, data={"message": "faulty payload"})
         else:
-            resp = Response(status=204)
+            try:
+                user.save(update_fields=['invited_by'])
+            except django.db.Error as e:
+                resp = Response(status=403, data={"message": "faulty payload"})
+            else:
+                resp = Response(status=204)
+
 
         return resp
 
