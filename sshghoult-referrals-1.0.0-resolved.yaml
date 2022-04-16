@@ -1,0 +1,188 @@
+---
+openapi: 3.0.0
+info:
+  title: Referralsys API
+  description: Simple API for referral system
+  license:
+    name: MIT
+  version: 1.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/sshghoult/referrals/1.0.0
+  description: SwaggerHub API Auto Mocking
+tags:
+- name: auth-req
+  description: Authentication is required
+paths:
+  /api/v1/profiles/{invite_code}:
+    get:
+      tags:
+      - auth-req
+      summary: Info on profile
+      description: Full info on the profile specified by the public invite code in URL
+      parameters:
+      - name: invite_code
+        in: path
+        description: public invite code of profile
+        required: true
+        style: simple
+        explode: false
+        schema:
+          $ref: '#/components/schemas/ProfileCode'
+      responses:
+        "200":
+          description: Profile exists and described in the payload of response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileFullInfo'
+        "403":
+          description: Session is not authenticated
+        "404":
+          description: Profile with such code does not exists
+    patch:
+      tags:
+      - auth-req
+      summary: Specify the profile user have been invited by
+      description: Add an invite code of profile user have been invited by to the profile of the invited user. Can be done only by authenticated owner of the profile.
+      parameters:
+      - name: invite_code
+        in: path
+        description: public invite code of profile
+        required: true
+        style: simple
+        explode: false
+        schema:
+          $ref: '#/components/schemas/ProfileCode'
+      requestBody:
+        description: Invitor's public invite code
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/profiles_invite_code_body'
+      responses:
+        "204":
+          description: Updated successfully
+        "403":
+          description: Session is not authenticated or authenticated user does not own the profile
+        "404":
+          description: One of the accounts specified by invite codes (either of the invited or of the invitor) does not exist
+        "409":
+          description: User can not be their own referral
+  /api/v1/whoami:
+    get:
+      summary: Info on the profile of authenticated user
+      description: Full info on the profile of authenticated user through matching sent cookies against database
+      responses:
+        "200":
+          description: Profile exists and described in the payload of response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        "404":
+          description: Session can not be matched to any account
+  /api/v1/auth/code_request:
+    post:
+      summary: Request 3-rd party SMS code
+      description: Request 3-rd party SMS code to be sent to specified phone number
+      requestBody:
+        description: User's phone number
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auth_code_request_body'
+      responses:
+        "200":
+          description: Successfully sent the auth code via SMS. For demonstration and debug purposes code is also returned in response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+  /api/v1/auth/confirm:
+    post:
+      summary: Authenticate via posting SMS code
+      description: Authenticate via posting 3-rd party SMS code earlier sent on the specified phone number
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auth_confirm_body'
+      responses:
+        "200":
+          description: Successfully sent the auth code via SMS. For demonstration and debug purposes code is also returned in response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "404":
+          description: Code for this phone number have not been requested or sent code is incorrect
+components:
+  schemas:
+    ProfileCode:
+      type: string
+      format: 6 digits as a string
+      example: "123456"
+    PhoneNumber:
+      type: string
+      format: 11 or 12 symbols describing a valid phone number
+      example: +75557774499
+    PhoneNumberWrapped:
+      required:
+      - phone_number
+      type: object
+      properties:
+        phone_number:
+          $ref: '#/components/schemas/PhoneNumber'
+    Profile:
+      required:
+      - invite_code
+      - invited_by
+      - phone_number
+      type: object
+      properties:
+        invite_code:
+          $ref: '#/components/schemas/ProfileCode'
+        phone_number:
+          $ref: '#/components/schemas/PhoneNumber'
+        invited_by:
+          allOf:
+          - $ref: '#/components/schemas/ProfileCode'
+          - nullable: true
+      example:
+        invite_code: "123456"
+        phone_number: "2"
+        invited_by: "651457"
+    ProfileFullInfo:
+      required:
+      - referrals
+      - user
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/Profile'
+        referrals:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhoneNumberWrapped'
+    SMSCode:
+      type: string
+      format: 4 digits as a string
+      example: "1234"
+    profiles_invite_code_body:
+      properties:
+        invited_by:
+          $ref: '#/components/schemas/ProfileCode'
+    auth_code_request_body:
+      properties:
+        phone_number:
+          $ref: '#/components/schemas/PhoneNumber'
+    inline_response_200:
+      properties:
+        code:
+          $ref: '#/components/schemas/SMSCode'
+    auth_confirm_body:
+      properties:
+        phone_number:
+          $ref: '#/components/schemas/PhoneNumber'
+        code:
+          $ref: '#/components/schemas/SMSCode'
